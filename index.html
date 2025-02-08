@@ -69,11 +69,15 @@
     <div id="image-container"></div>
     
     <script>
+        const GITHUB_USERNAME = "YOUR_GITHUB_USERNAME";
+        const REPO_NAME = "YOUR_REPO_NAME";
+        const GITHUB_TOKEN = "YOUR_PERSONAL_ACCESS_TOKEN";
+        const FILE_PATH = "uploaded_images/";
         let rotationAngles = [15, -15, 10, -10];
         let rotationIndex = 0;
+
         document.getElementById('fileInput').addEventListener('change', function(event) {
             const container = document.getElementById('image-container');
-            
             Array.from(event.target.files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -83,10 +87,53 @@
                     img.style.transform = `rotate(${rotationAngles[rotationIndex]}deg)`;
                     rotationIndex = (rotationIndex + 1) % rotationAngles.length;
                     container.appendChild(img);
+                    uploadToGitHub(file.name, e.target.result.split(',')[1]);
                 };
                 reader.readAsDataURL(file);
             });
         });
+
+        function uploadToGitHub(filename, content) {
+            const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}${filename}`;
+            const data = {
+                message: `Upload ${filename}`,
+                content: content,
+                branch: "main"
+            };
+            fetch(url, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `token ${GITHUB_TOKEN}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            }).then(response => response.json()).then(data => {
+                console.log("Uploaded:", data);
+            }).catch(error => console.error("Error uploading:", error));
+        }
+
+        function loadImagesFromGitHub() {
+            const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}`;
+            fetch(url, {
+                headers: {
+                    "Authorization": `token ${GITHUB_TOKEN}`
+                }
+            })
+            .then(response => response.json())
+            .then(files => {
+                const container = document.getElementById('image-container');
+                files.forEach((file, index) => {
+                    const img = document.createElement('img');
+                    img.src = file.download_url;
+                    img.classList.add('stacked-image');
+                    img.style.transform = `rotate(${rotationAngles[index % rotationAngles.length]}deg)`;
+                    container.appendChild(img);
+                });
+            })
+            .catch(error => console.error("Error loading images:", error));
+        }
+
+        document.addEventListener("DOMContentLoaded", loadImagesFromGitHub);
     </script>
 </body>
 </html>
